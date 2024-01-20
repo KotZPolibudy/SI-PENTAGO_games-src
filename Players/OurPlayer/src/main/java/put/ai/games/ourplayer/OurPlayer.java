@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package put.ai.games.naiveplayer;
+package put.ai.games.ourplayer;
 
 import java.util.List;
 import java.util.Random;
@@ -29,13 +29,13 @@ public class OurPlayer extends Player {
     public Color me, opponent;
     long MaxDepth = 4;
     public Move bestMove;
-
-    public double evaluate(Board b, Color onMove)
+    public Board globalBoard;
+    public double evaluate(Color onMove)
     {
         //For now just calculate the longest line
         int maxPlayer1 = 0;
         int maxPlayer2 = 0;
-        long size = b.getSize();
+        long size = globalBoard.getSize();
         int currPlayer1 = 0;
         int currPlayer2 = 0;
         //Check vertically
@@ -43,13 +43,13 @@ public class OurPlayer extends Player {
         {
             for(int j=0; j<size; j++)
             {
-                if(b.getState(i,j) == PLAYER1)
+                if(globalBoard.getState(i,j) == PLAYER1)
                 {
                     currPlayer1++;
                     if(currPlayer1>maxPlayer1) maxPlayer1=currPlayer1;
                     currPlayer2=0;
                 }
-                else if (b.getState(i,j) == PLAYER2)
+                else if (globalBoard.getState(i,j) == PLAYER2)
                 {
                     currPlayer2++;
                     if(currPlayer2>maxPlayer2) maxPlayer2=currPlayer2;
@@ -70,13 +70,13 @@ public class OurPlayer extends Player {
         {
             for(int j=0; j<size; j++)
             {
-                if(b.getState(j,i) == PLAYER1)
+                if(globalBoard.getState(j,i) == PLAYER1)
                 {
                     currPlayer1++;
                     if(currPlayer1>maxPlayer1) maxPlayer1=currPlayer1;
                     currPlayer2=0;
                 }
-                else if (b.getState(j,i) == PLAYER2)
+                else if (globalBoard.getState(j,i) == PLAYER2)
                 {
                     currPlayer2++;
                     if(currPlayer2>maxPlayer2) maxPlayer2=currPlayer2;
@@ -98,44 +98,54 @@ public class OurPlayer extends Player {
         return evaluation * side;
     }
 
-    public double Search(int depth, Board b)
+    public double Search(int depth, double alpha, double beta)
     {
+        //alpha represents the best known value that the maximizing player (Max) can guarantee
+        //beta represents the best known value that the minimizing player (Min) can guarantee
         //Evaluate if reached max depth
         if(depth == MaxDepth)
         {
-            if(depth % 2 == 0) return evaluate(b, me);
-            else return evaluate(b, opponent);
+            if(depth % 2 == 0) return evaluate(me);
+            else return evaluate(opponent);
         }
         //First check if someone wins
-        if(b.getWinner(EMPTY) == EMPTY) return -100.0; //Both win, but according to the rules it counts as loss
-        if(b.getWinner(EMPTY) == PLAYER1) return 100.0;
-        if(b.getWinner(EMPTY) == PLAYER2) return -100.0;
+        if(globalBoard.getWinner(EMPTY) == EMPTY) return -100.0; //Both win, but according to the rules it counts as loss
+        if(globalBoard.getWinner(EMPTY) == PLAYER1) return 100.0;
+        if(globalBoard.getWinner(EMPTY) == PLAYER2) return -100.0;
 
-        //Begin search
-        double bestEval = -100000;
         //Get moves list
         Color onMove;
         if(depth % 2 == 0) onMove = me;
         else onMove = opponent;
-        List<Move> moves = b.getMovesFor(onMove);
+        List<Move> moves = globalBoard.getMovesFor(onMove);
         //Check all moves
         for(int i=0; i<moves.size(); i++)
         {
-            b.doMove(moves.get(i));
-            double eval = -Search(depth + 1, b);
-            if(eval > bestEval)
+            globalBoard.doMove(moves.get(i));
+            double eval = -Search(depth + 1, -beta, -alpha);
+            globalBoard.undoMove(moves.get(i));
+            if(eval >= beta)
             {
-                bestEval = eval;
-                if(depth == 0) bestMove = moves.get(i);
+                if(depth == 0)
+                {
+                    bestMove = moves.get(i);
+                }
+                return beta;
             }
-            b.undoMove(moves.get(i));
+            if(eval > alpha)
+            {
+                alpha = eval;
+                if (depth == 0) {
+                    bestMove = moves.get(i);
+                }
+            }
         }
-        return bestEval;
+        return alpha;
     }
 
     @Override
     public Move nextMove(Board b) {
-        //Let's leave this time for now
+        //Let's leave tracking time for now
         long ThinkingTime = getTime();
         if(getColor()==PLAYER1)
         {
@@ -149,7 +159,10 @@ public class OurPlayer extends Player {
             me = PLAYER2;
             opponent = PLAYER1;
         }
-        Search(0, b);
+        globalBoard = b;
+        double initialAlpha = Double.NEGATIVE_INFINITY;
+        double initialBeta = Double.POSITIVE_INFINITY;
+        Search(0, initialAlpha, initialBeta);
         return bestMove;
     }
 }
