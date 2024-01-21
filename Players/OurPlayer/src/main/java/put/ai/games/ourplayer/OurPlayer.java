@@ -6,6 +6,9 @@ package put.ai.games.ourplayer;
 
 import java.util.List;
 import java.util.Random;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.*;
 import put.ai.games.game.Board;
 import put.ai.games.game.Move;
 import put.ai.games.game.Player;
@@ -30,6 +33,10 @@ public class OurPlayer extends Player {
     long MaxDepth = 4;
     public Move bestMove;
     public Board globalBoard;
+    Map<Integer, Double> evalMapping = new HashMap<>();
+    Map<Integer, Move> moveMapping = new HashMap<>();
+    int forWin;
+
     public double evaluate(Color onMove)
     {
         //For now just calculate the longest line
@@ -57,8 +64,9 @@ public class OurPlayer extends Player {
                 }
                 else
                 {
-                    currPlayer1=0;
-                    currPlayer2=0;
+                    //do nothing
+                    //currPlayer1=0;
+                    //currPlayer2=0;
                 }
             }
             //Reset current counter
@@ -84,8 +92,9 @@ public class OurPlayer extends Player {
                 }
                 else
                 {
-                    currPlayer1=0;
-                    currPlayer2=0;
+                    //do nothing
+                    //currPlayer1=0;
+                    //currPlayer2=0;
                 }
             }
             //Reset current counter
@@ -103,27 +112,45 @@ public class OurPlayer extends Player {
         //alpha represents the best known value that the maximizing player (Max) can guarantee
         //beta represents the best known value that the minimizing player (Min) can guarantee
         //Evaluate if reached max depth
-        if(depth == MaxDepth)
-        {
-            if(depth % 2 == 0) return evaluate(me);
+        if(depth == MaxDepth) {
+            if (depth % 2 == 0) return evaluate(me);
             else return evaluate(opponent);
         }
-        //First check if someone wins
-        if(globalBoard.getWinner(EMPTY) == EMPTY) return -100.0; //Both win, but according to the rules it counts as loss
-        if(globalBoard.getWinner(EMPTY) == PLAYER1) return 100.0;
-        if(globalBoard.getWinner(EMPTY) == PLAYER2) return -100.0;
 
         //Get moves list
-        Color onMove;
-        if(depth % 2 == 0) onMove = me;
-        else onMove = opponent;
+        Color onMove, enemy;
+        if(depth % 2 == 0)
+        {
+            onMove = me;
+            enemy = opponent;
+        }
+        else
+        {
+            onMove = opponent;
+            enemy = me;
+        }
+        //First check if someone can win
+        Color Winner = globalBoard.getWinner(EMPTY);
+        if(Winner == EMPTY) return -100.0; //Both win, but according to the rules it counts as loss
+        if(Winner == onMove) return 100.0;
+        if(Winner == enemy) return -100.0;
         List<Move> moves = globalBoard.getMovesFor(onMove);
         //Check all moves
-        for(int i=0; i<moves.size(); i++)
+        double eval;
+        for(int i=0; i<moves.size()/2; i++)
         {
             globalBoard.doMove(moves.get(i));
-            double eval = -Search(depth + 1, -beta, -alpha);
+            //Check if we have already seen this position
+            int hash = globalBoard.hashCode();
+            if (evalMapping.containsKey(hash)) eval = evalMapping.get(hash);
+            else
+            {
+                eval = -Search(depth + 1, -beta, -alpha);
+                evalMapping.put(hash, eval);
+            }
+            //Undo move now before returning values
             globalBoard.undoMove(moves.get(i));
+            //Do alpha-beta pruning
             if(eval >= beta)
             {
                 if(depth == 0)
@@ -145,6 +172,11 @@ public class OurPlayer extends Player {
 
     @Override
     public Move nextMove(Board b) {
+        // Clear the map before each move
+        evalMapping.clear();
+        // Check how much should we do for a win
+        int half = b.getSize() / 2;
+        forWin = half + (half + 1) / 2;
         //Let's leave tracking time for now
         long ThinkingTime = getTime();
         if(getColor()==PLAYER1)
