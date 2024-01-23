@@ -15,6 +15,5 @@
         <module>OurPlayer</module>
         <module>NastyPlayer</module>
         <module>NullPlayer</module>
-        <module>Mikolaj</module>
   </modules>
 </project>
