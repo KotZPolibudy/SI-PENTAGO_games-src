@@ -1,4 +1,3 @@
-# Naiwny gracz to mój gracz.
+# Bestia Tytan Ostateczny
 
-
-...ale jednak trzeba będzie zrobić "ourPLayer" na podstawie naiwnego, zrobi się na dniach.
+Wielki wygrany turnieju SI pozdrawia
